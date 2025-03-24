@@ -2,6 +2,7 @@
   text-align: center;
 }
 
+
 .App-logo {
   height: 40vmin;
   pointer-events: none;
@@ -13,15 +14,35 @@
   }
 }
 
+/* Encabezado más compacto */
 .App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  background-color: #25adc2;
+  padding: 1rem 0; /* Reduce el padding vertical */
+  margin-bottom: 1rem; /* Reduce el margen inferior */
+}
+
+/* Título más pequeño */
+.App-header h1 {
+  font-size: 1.8rem; /* Tamaño de fuente reducido */
+  margin: 0.5rem 0; /* Margen reducido */
+}
+
+/* Imagen más pequeña */
+.App-anime {
+  width: 200px !important; /* Tamaño reducido (era 300px) */
+  height: auto;
+  margin: 0.5rem 0; /* Margen reducido */
+}
+
+/* Menú de navegación más compacto */
+.App-header nav ul {
+  margin: 0.5rem 0;
+  padding: 0;
+}
+
+.App-header nav li {
+  display: inline-block;
+  margin: 0 0.8rem; /* Espacio entre botones reducido */
 }
 
 .App-link {
@@ -35,4 +56,49 @@
   to {
     transform: rotate(360deg);
   }
+}
+/* Estilos para los botones de servicios */
+.servicios-container {
+  padding: 20px;
+  text-align: center;
+}
+
+.botones-servicios {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.boton-servicio {
+  padding: 15px;
+  background-color: #61dafb;
+  color: #282c34;
+  text-decoration: none;
+  border-radius: 5px;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+.boton-servicio:hover {
+  background-color: #4fa8d3;
+}
+
+nav ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+nav a {
+  color: #61dafb;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+nav a:hover {
+  text-decoration: underline;
 }

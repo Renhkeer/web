@@ -1,24 +1,70 @@
-import logo from './logo.svg';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import './App.css';
+import anime from './anime.jpg';
+import Servicios from './Servicios';
+
+// Componente de encabezado separado para usar useLocation
+function Header() {
+  const location = useLocation();
+  const isServiciosPage = location.pathname === '/servicios';
+
+  return (
+    <header className="App-header compact-header">
+      <title>Calendario de Animes</title>
+      <h1 className="header-title">Calendario de Animes</h1>
+      {!isServiciosPage && (
+        <img 
+          src={anime} 
+          className="App-anime compact-image" 
+          alt="anime"
+        />
+      )}
+      <nav className="compact-nav">
+        <ul>
+          <li><Link to="/">Inicio</Link></li>
+          <li><Link to="/servicios">Servicios</Link></li>
+          <li><Link to="/contacto">Contacto</Link></li>
+        </ul>
+      </nav>
+    </header>
+  );
+}
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <div className="App">
+        {/* Cabecera */}
+        <Header />
+
+        {/* Contenido principal */}
+        <main>
+          <Routes>
+            <Route path="/" element={
+              <>
+                <section id="inicio">
+                  <h2>Bienvenido</h2>
+                  <p>Aquí podrás agregar tus animes favoritos o eliminar los que ya no te gustan</p>
+                </section>
+              </>
+            } />
+            <Route path="/servicios" element={<Servicios />} />
+            <Route path="/contacto" element={
+              <section id="contacto">
+                <h2>Contacto</h2>
+                <p>Los 3 payasos</p>
+              </section>
+            } />
+          </Routes>
+        </main>
+
+        {/* Pie de página */}
+        <footer>
+          <p>&copy; {new Date().getFullYear()} CAnime. Todos los derechos reservados.</p>
+        </footer>
+      </div>
+    </Router>
   );
 }
 
