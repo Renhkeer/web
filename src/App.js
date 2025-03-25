@@ -45,7 +45,7 @@ function App() {
               <>
                 <section id="inicio">
                   <h2>Bienvenido</h2>
-                  <p>Aquí podrás agregar tus animes favoritos o eliminar los que ya no te gustan</p>
+                  <p>VE TU CALENDARIO DE ANIMES!!</p>
                 </section>
               </>
             } />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
+import axios from 'axios';
 
 function Servicios() {
   const [animes, setAnimes] = useState([]);
@@ -7,6 +8,9 @@ function Servicios() {
   const [editando, setEditando] = useState(null);
   const [editText, setEditText] = useState('');
   const [accionActual, setAccionActual] = useState(null);
+  const [animeInfo, setAnimeInfo] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [errorBusqueda, setErrorBusqueda] = useState('');
 
   // Cargar animes al iniciar
   useEffect(() => {
@@ -23,20 +27,59 @@ function Servicios() {
     else setAnimes(data || []);
   };
 
-  // Agregar anime
+  // Buscar información del anime en Jikan API
+  const buscarAnimeInfo = async (nombre) => {
+    if (!nombre.trim()) return;
+    
+    setLoading(true);
+    setErrorBusqueda('');
+    try {
+      const response = await axios.get(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(nombre)}&limit=1`);
+      
+      if (response.data.data && response.data.data.length > 0) {
+        setAnimeInfo(response.data.data[0]);
+      } else {
+        setAnimeInfo(null);
+        setErrorBusqueda('No se encontró información para este anime');
+      }
+    } catch (error) {
+      console.error('Error buscando anime:', error);
+      setAnimeInfo(null);
+      setErrorBusqueda('Error al buscar el anime. Intenta nuevamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Agregar anime a Supabase
   const agregarAnime = async () => {
     if (!nuevoAnime.trim()) return;
     
+    const animeData = {
+      nombre: nuevoAnime,
+      info: animeInfo ? {
+        imagen: animeInfo.images?.jpg?.image_url,
+        titulo: animeInfo.title,
+        sinopsis: animeInfo.synopsis,
+        episodios: animeInfo.episodes,
+        puntuacion: animeInfo.score,
+        estado: animeInfo.status,
+        fecha_estreno: animeInfo.aired?.string
+      } : null
+    };
+    
     const { data, error } = await supabase
       .from('animes')
-      .insert([{ nombre: nuevoAnime }])
+      .insert([animeData])
       .select();
     
     if (error) {
       console.error('Error agregando anime:', error);
+      setErrorBusqueda('Error al guardar el anime');
     } else {
       setAnimes([data[0], ...animes]);
       setNuevoAnime('');
+      setAnimeInfo(null);
       setAccionActual(null);
     }
   };
@@ -79,7 +122,11 @@ function Servicios() {
       
       <div className="botones-servicios">
         <button 
-          onClick={() => setAccionActual('agregar')} 
+          onClick={() => {
+            setAccionActual('agregar');
+            setAnimeInfo(null);
+            setErrorBusqueda('');
+          }} 
           className="boton-servicio"
         >
           Agregar Anime
@@ -114,13 +161,53 @@ function Servicios() {
       {accionActual === 'agregar' && (
         <div className="formulario-anime">
           <h3>Agregar nuevo anime</h3>
-          <input
-            type="text"
-            value={nuevoAnime}
-            onChange={(e) => setNuevoAnime(e.target.value)}
-            placeholder="Nombre del anime"
-          />
-          <button onClick={agregarAnime}>Agregar</button>
+          <div className="busqueda-anime">
+            <input
+              type="text"
+              value={nuevoAnime}
+              onChange={(e) => setNuevoAnime(e.target.value)}
+              placeholder="Nombre del anime"
+              onKeyPress={(e) => e.key === 'Enter' && buscarAnimeInfo(nuevoAnime)}
+            />
+            <button 
+              onClick={() => buscarAnimeInfo(nuevoAnime)}
+              disabled={!nuevoAnime.trim() || loading}
+            >
+              {loading ? 'Buscando...' : 'Buscar Info'}
+            </button>
+          </div>
+          
+          {errorBusqueda && <p className="error-message">{errorBusqueda}</p>}
+          
+          {animeInfo && (
+            <div className="anime-info">
+              <div className="anime-info-header">
+                <img 
+                  src={animeInfo.images?.jpg?.image_url} 
+                  alt={animeInfo.title} 
+                  className="anime-image"
+                />
+                <div className="anime-details">
+                  <h4>{animeInfo.title}</h4>
+                  <p><strong>Estado:</strong> {animeInfo.status}</p>
+                  <p><strong>Episodios:</strong> {animeInfo.episodes || 'Desconocido'}</p>
+                  <p><strong>Puntuación:</strong> {animeInfo.score || 'N/A'}</p>
+                  <p><strong>Estreno:</strong> {animeInfo.aired?.string || 'Desconocido'}</p>
+                </div>
+              </div>
+              <div className="anime-sinopsis">
+                <p><strong>Sinopsis:</strong> {animeInfo.synopsis?.substring(0, 200)}...</p>
+              </div>
+            </div>
+          )}
+          
+          <button 
+            onClick={agregarAnime} 
+            disabled={!nuevoAnime.trim()}
+            className="boton-agregar"
+          >
+            Agregar Anime
+          </button>
         </div>
       )}
 
@@ -132,22 +219,28 @@ function Servicios() {
             {animes.map(anime => (
               <li key={anime.id}>
                 {editando === anime.id ? (
-                  <>
+                  <div className="edicion-anime">
                     <input
                       type="text"
                       value={editText}
                       onChange={(e) => setEditText(e.target.value)}
+                      className="input-edicion"
                     />
-                    <button onClick={guardarEdicion}>Guardar</button>
-                  </>
+                    <button onClick={guardarEdicion} className="boton-guardar">Guardar</button>
+                  </div>
                 ) : (
-                  <>
-                    {anime.nombre}
-                    <button onClick={() => {
-                      setEditando(anime.id);
-                      setEditText(anime.nombre);
-                    }}>Editar</button>
-                  </>
+                  <div className="item-anime">
+                    <span>{anime.nombre}</span>
+                    <button 
+                      onClick={() => {
+                        setEditando(anime.id);
+                        setEditText(anime.nombre);
+                      }}
+                      className="boton-editar"
+                    >
+                      Editar
+                    </button>
+                  </div>
                 )}
               </li>
             ))}
@@ -162,8 +255,15 @@ function Servicios() {
           <ul>
             {animes.map(anime => (
               <li key={anime.id}>
-                {anime.nombre}
-                <button onClick={() => eliminarAnime(anime.id)}>Eliminar</button>
+                <div className="item-anime">
+                  <span>{anime.nombre}</span>
+                  <button 
+                    onClick={() => eliminarAnime(anime.id)}
+                    className="boton-eliminar"
+                  >
+                    Eliminar
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -177,11 +277,29 @@ function Servicios() {
           {animes.length === 0 ? (
             <p>No hay animes en la lista</p>
           ) : (
-            <ul>
+            <div className="grid-animes">
               {animes.map(anime => (
-                <li key={anime.id}>{anime.nombre}</li>
+                <div key={anime.id} className="tarjeta-anime">
+                  {anime.info?.imagen && (
+                    <img 
+                      src={anime.info.imagen} 
+                      alt={anime.info.titulo || anime.nombre}
+                      className="imagen-anime"
+                    />
+                  )}
+                  <div className="contenido-anime">
+                    <h4>{anime.info?.titulo || anime.nombre}</h4>
+                    {anime.info && (
+                      <>
+                        <p><strong>Episodios:</strong> {anime.info.episodios || 'Desconocido'}</p>
+                        <p><strong>Puntuación:</strong> {anime.info.puntuacion || 'N/A'}</p>
+                        <p className="sinopsis">{anime.info.sinopsis?.substring(0, 100)}...</p>
+                      </>
+                    )}
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       )}
