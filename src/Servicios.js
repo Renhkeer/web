@@ -12,7 +12,6 @@ function Servicios() {
   const [loading, setLoading] = useState(false);
   const [errorBusqueda, setErrorBusqueda] = useState('');
 
-  // Cargar animes al iniciar
   useEffect(() => {
     cargarAnimes();
   }, []);
@@ -22,22 +21,25 @@ function Servicios() {
       .from('animes')
       .select('*')
       .order('creado_en', { ascending: false });
-    
-    if (error) console.error('Error cargando animes:', error);
-    else setAnimes(data || []);
+
+    if (error) {
+      console.error('Error cargando animes:', error);
+    } else {
+      setAnimes(data || []);
+    }
   };
 
-  // Buscar información del anime en Jikan API
   const buscarAnimeInfo = async (nombre) => {
     if (!nombre.trim()) return;
-    
+
     setLoading(true);
     setErrorBusqueda('');
     try {
       const response = await axios.get(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(nombre)}&limit=1`);
-      
-      if (response.data.data && response.data.data.length > 0) {
-        setAnimeInfo(response.data.data[0]);
+      const result = response.data?.data?.[0];
+
+      if (result) {
+        setAnimeInfo(result);
       } else {
         setAnimeInfo(null);
         setErrorBusqueda('No se encontró información para este anime');
@@ -51,10 +53,15 @@ function Servicios() {
     }
   };
 
-  // Agregar anime a Supabase
   const agregarAnime = async () => {
     if (!nuevoAnime.trim()) return;
-    
+
+    const animeExiste = animes.some(a => a.nombre.toLowerCase() === nuevoAnime.trim().toLowerCase());
+    if (animeExiste) {
+      setErrorBusqueda('Este anime ya está en la lista.');
+      return;
+    }
+
     const animeData = {
       nombre: nuevoAnime,
       info: animeInfo ? {
@@ -67,12 +74,12 @@ function Servicios() {
         fecha_estreno: animeInfo.aired?.string
       } : null
     };
-    
+
     const { data, error } = await supabase
       .from('animes')
       .insert([animeData])
       .select();
-    
+
     if (error) {
       console.error('Error agregando anime:', error);
       setErrorBusqueda('Error al guardar el anime');
@@ -84,80 +91,57 @@ function Servicios() {
     }
   };
 
-  // Actualizar anime
   const guardarEdicion = async () => {
     if (!editText.trim()) return;
-    
+
     const { error } = await supabase
       .from('animes')
       .update({ nombre: editText })
       .eq('id', editando);
-    
+
     if (error) {
       console.error('Error actualizando anime:', error);
     } else {
-      cargarAnimes();
+      setAnimes(animes.map(anime => 
+        anime.id === editando ? { ...anime, nombre: editText } : anime
+      ));
       setEditando(null);
       setEditText('');
     }
   };
 
-  // Eliminar anime
   const eliminarAnime = async (id) => {
     const { error } = await supabase
       .from('animes')
       .delete()
       .eq('id', id);
-    
+
     if (error) {
       console.error('Error eliminando anime:', error);
     } else {
-      cargarAnimes();
+      setAnimes(animes.filter(anime => anime.id !== id));
     }
   };
 
   return (
     <div className="servicios-container">
       <h2>Servicios de Anime</h2>
-      
+
       <div className="botones-servicios">
-        <button 
-          onClick={() => {
-            setAccionActual('agregar');
-            setAnimeInfo(null);
-            setErrorBusqueda('');
-          }} 
-          className="boton-servicio"
-        >
+        <button onClick={() => { setAccionActual('agregar'); setAnimeInfo(null); setErrorBusqueda(''); }} className="boton-servicio">
           Agregar Anime
         </button>
-        
-        <button 
-          onClick={() => setAccionActual('editar')} 
-          className="boton-servicio"
-          disabled={animes.length === 0}
-        >
+        <button onClick={() => setAccionActual('editar')} className="boton-servicio" disabled={animes.length === 0}>
           Editar Anime
         </button>
-        
-        <button 
-          onClick={() => setAccionActual('eliminar')} 
-          className="boton-servicio"
-          disabled={animes.length === 0}
-        >
+        <button onClick={() => setAccionActual('eliminar')} className="boton-servicio" disabled={animes.length === 0}>
           Eliminar Anime
         </button>
-        
-        <button 
-          onClick={() => setAccionActual('listar')} 
-          className="boton-servicio"
-          disabled={animes.length === 0}
-        >
+        <button onClick={() => setAccionActual('listar')} className="boton-servicio" disabled={animes.length === 0}>
           Mostrar Animes
         </button>
       </div>
 
-      {/* Formulario para agregar anime */}
       {accionActual === 'agregar' && (
         <div className="formulario-anime">
           <h3>Agregar nuevo anime</h3>
@@ -167,26 +151,19 @@ function Servicios() {
               value={nuevoAnime}
               onChange={(e) => setNuevoAnime(e.target.value)}
               placeholder="Nombre del anime"
-              onKeyPress={(e) => e.key === 'Enter' && buscarAnimeInfo(nuevoAnime)}
+              onKeyDown={(e) => e.key === 'Enter' && buscarAnimeInfo(nuevoAnime)}
             />
-            <button 
-              onClick={() => buscarAnimeInfo(nuevoAnime)}
-              disabled={!nuevoAnime.trim() || loading}
-            >
+            <button onClick={() => buscarAnimeInfo(nuevoAnime)} disabled={!nuevoAnime.trim() || loading}>
               {loading ? 'Buscando...' : 'Buscar Info'}
             </button>
           </div>
-          
+
           {errorBusqueda && <p className="error-message">{errorBusqueda}</p>}
-          
+
           {animeInfo && (
             <div className="anime-info">
               <div className="anime-info-header">
-                <img 
-                  src={animeInfo.images?.jpg?.image_url} 
-                  alt={animeInfo.title} 
-                  className="anime-image"
-                />
+                <img src={animeInfo.images?.jpg?.image_url} alt={animeInfo.title} className="anime-image" />
                 <div className="anime-details">
                   <h4>{animeInfo.title}</h4>
                   <p><strong>Estado:</strong> {animeInfo.status}</p>
@@ -200,18 +177,13 @@ function Servicios() {
               </div>
             </div>
           )}
-          
-          <button 
-            onClick={agregarAnime} 
-            disabled={!nuevoAnime.trim()}
-            className="boton-agregar"
-          >
+
+          <button onClick={agregarAnime} disabled={!nuevoAnime.trim()} className="boton-agregar">
             Agregar Anime
           </button>
         </div>
       )}
 
-      {/* Vista para editar anime */}
       {accionActual === 'editar' && (
         <div className="lista-animes">
           <h3>Selecciona un anime para editar</h3>
@@ -231,13 +203,7 @@ function Servicios() {
                 ) : (
                   <div className="item-anime">
                     <span>{anime.nombre}</span>
-                    <button 
-                      onClick={() => {
-                        setEditando(anime.id);
-                        setEditText(anime.nombre);
-                      }}
-                      className="boton-editar"
-                    >
+                    <button onClick={() => { setEditando(anime.id); setEditText(anime.nombre); }} className="boton-editar">
                       Editar
                     </button>
                   </div>
@@ -248,7 +214,6 @@ function Servicios() {
         </div>
       )}
 
-      {/* Vista para eliminar anime */}
       {accionActual === 'eliminar' && (
         <div className="lista-animes">
           <h3>Selecciona un anime para eliminar</h3>
@@ -257,10 +222,7 @@ function Servicios() {
               <li key={anime.id}>
                 <div className="item-anime">
                   <span>{anime.nombre}</span>
-                  <button 
-                    onClick={() => eliminarAnime(anime.id)}
-                    className="boton-eliminar"
-                  >
+                  <button onClick={() => eliminarAnime(anime.id)} className="boton-eliminar">
                     Eliminar
                   </button>
                 </div>
@@ -270,7 +232,6 @@ function Servicios() {
         </div>
       )}
 
-      {/* Vista para mostrar la lista */}
       {accionActual === 'listar' && (
         <div className="lista-animes">
           <h3>Lista de Animes</h3>
@@ -281,11 +242,7 @@ function Servicios() {
               {animes.map(anime => (
                 <div key={anime.id} className="tarjeta-anime">
                   {anime.info?.imagen && (
-                    <img 
-                      src={anime.info.imagen} 
-                      alt={anime.info.titulo || anime.nombre}
-                      className="imagen-anime"
-                    />
+                    <img src={anime.info.imagen} alt={anime.info.titulo || anime.nombre} className="imagen-anime" />
                   )}
                   <div className="contenido-anime">
                     <h4>{anime.info?.titulo || anime.nombre}</h4>
